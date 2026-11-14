@@ -59,8 +59,7 @@ import pandas as pd
 import requests
 
 INUMET_URL = (
-    "https://www.inumet.gub.uy/"
-    "reportes/estadoActual/datos_inumet_ui_publica.mch"
+    "https://www.inumet.gub.uy/reportes/estadoActual/datos_inumet_ui_publica.mch"
 )
 
 # Identificadores conocidos y estables de Carrasco.
@@ -203,9 +202,9 @@ def find_carrasco_station(
         lambda s: str(s.get("idStr", "")).upper() == CARRASCO_ID_STR,
         lambda s: str(s.get("codigoOMM", "")).lstrip("_") == CARRASCO_OMM,
         lambda s: str(s.get("idOACI", "")).upper() == CARRASCO_OACI,
-        lambda s: "carrasco" in str(
-            s.get("nombre") or s.get("displayName") or ""
-        ).lower(),
+        lambda s: (
+            "carrasco" in str(s.get("nombre") or s.get("displayName") or "").lower()
+        ),
     ]
 
     for check in checks:
@@ -279,10 +278,22 @@ def direction_to_cardinal(value: Any) -> str | None:
         return str(value)
 
     labels = [
-        "N", "NNE", "NE", "ENE",
-        "E", "ESE", "SE", "SSE",
-        "S", "SSW", "SW", "WSW",
-        "W", "WNW", "NW", "NNW",
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
     ]
     index = int((deg + 11.25) // 22.5) % 16
     return labels[index]
@@ -394,8 +405,8 @@ def normalize_carrasco(
     # Dirección cardinal adicional.
     df["DireccionCardinal"] = None
     mask_dir = df["VariableID"] == VAR_IDS["direccion_viento"]
-    df.loc[mask_dir, "DireccionCardinal"] = (
-        df.loc[mask_dir, "Valor"].apply(direction_to_cardinal)
+    df.loc[mask_dir, "DireccionCardinal"] = df.loc[mask_dir, "Valor"].apply(
+        direction_to_cardinal
     )
 
     return df
@@ -461,9 +472,8 @@ def make_wide_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     # Evitar duplicados improbables en FechaHora+Variable:
     # si hay varios, conservar el último recibido.
-    working = (
-        working.sort_values("FechaHora")
-        .drop_duplicates(["FechaHora", "VariableCorta"], keep="last")
+    working = working.sort_values("FechaHora").drop_duplicates(
+        ["FechaHora", "VariableCorta"], keep="last"
     )
 
     wide = working.pivot(
@@ -489,8 +499,7 @@ def save_matplotlib_chart(
     path: Path,
 ) -> bool:
     subset = df[
-        df["VariableID"].isin(variable_ids)
-        & df["ValorNumerico"].notna()
+        df["VariableID"].isin(variable_ids) & df["ValorNumerico"].notna()
     ].copy()
 
     if subset.empty:
@@ -614,28 +623,32 @@ def write_excel(
     # Resumen por variable.
     numeric = df[df["ValorNumerico"].notna()].copy()
     if not numeric.empty:
-        resumen = (
-            numeric.groupby(
-                ["VariableID", "Variable", "Unidad"],
-                dropna=False,
-                as_index=False,
-            )
-            .agg(
-                Registros=("ValorNumerico", "count"),
-                Minimo=("ValorNumerico", "min"),
-                Maximo=("ValorNumerico", "max"),
-                Promedio=("ValorNumerico", "mean"),
-                Ultimo=("ValorNumerico", "last"),
-                PrimeraFecha=("FechaHora", "min"),
-                UltimaFecha=("FechaHora", "max"),
-            )
+        resumen = numeric.groupby(
+            ["VariableID", "Variable", "Unidad"],
+            dropna=False,
+            as_index=False,
+        ).agg(
+            Registros=("ValorNumerico", "count"),
+            Minimo=("ValorNumerico", "min"),
+            Maximo=("ValorNumerico", "max"),
+            Promedio=("ValorNumerico", "mean"),
+            Ultimo=("ValorNumerico", "last"),
+            PrimeraFecha=("FechaHora", "min"),
+            UltimaFecha=("FechaHora", "max"),
         )
     else:
         resumen = pd.DataFrame(
             columns=[
-                "VariableID", "Variable", "Unidad", "Registros",
-                "Minimo", "Maximo", "Promedio", "Ultimo",
-                "PrimeraFecha", "UltimaFecha",
+                "VariableID",
+                "Variable",
+                "Unidad",
+                "Registros",
+                "Minimo",
+                "Maximo",
+                "Promedio",
+                "Ultimo",
+                "PrimeraFecha",
+                "UltimaFecha",
             ]
         )
 
@@ -759,7 +772,8 @@ def write_excel(
         )
         ws.freeze_panes(3, 1)
         ws.autofilter(
-            2, 0,
+            2,
+            0,
             2 + len(telemetria),
             max(0, len(telemetria.columns) - 1),
         )
@@ -791,7 +805,8 @@ def write_excel(
 
         if len(wide) > 0:
             ws_wide.autofilter(
-                2, 0,
+                2,
+                0,
                 2 + len(wide),
                 max(0, len(wide.columns) - 1),
             )
@@ -926,12 +941,15 @@ def open_file(path: Path) -> None:
     try:
         if sys.platform.startswith("win"):
             import os
+
             os.startfile(path)  # type: ignore[attr-defined]
         elif sys.platform == "darwin":
             import subprocess
+
             subprocess.Popen(["open", str(path)])
         else:
             import subprocess
+
             subprocess.Popen(
                 ["xdg-open", str(path)],
                 stdout=subprocess.DEVNULL,

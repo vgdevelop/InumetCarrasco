@@ -42,16 +42,18 @@ def test_parse_datetime_invalid_value_returns_nat():
 
 def test_build_filtered_json_serializes_values():
     frame = pd.DataFrame(
-        [{
-            "FechaHora": pd.Timestamp("2026-01-01T12:00:00"),
-            "VariableID": 47,
-            "Variable": "Temperatura",
-            "Unidad": "°C",
-            "PeriodicidadID": 1,
-            "Valor": 24.5,
-            "ValorNumerico": 24.5,
-            "DireccionCardinal": None,
-        }]
+        [
+            {
+                "FechaHora": pd.Timestamp("2026-01-01T12:00:00"),
+                "VariableID": 47,
+                "Variable": "Temperatura",
+                "Unidad": "°C",
+                "PeriodicidadID": 1,
+                "Valor": 24.5,
+                "ValorNumerico": 24.5,
+                "DireccionCardinal": None,
+            }
+        ]
     )
     result = build_filtered_json(
         {"idStr": "CARRASCO"}, frame, datetime(2026, 1, 1, tzinfo=timezone.utc)

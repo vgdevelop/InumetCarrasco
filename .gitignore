@@ -1,6 +1,7 @@
 .venv/
 .env
 .env.*
+!.env.example
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -16,3 +17,9 @@ pyvenv.cfg
 .vscode/
 .DS_Store
 Thumbs.db
+backups/
+historico/
+*.dump
+*.sql
+*.csv.gz
+*~

@@ -1,0 +1,85 @@
+name: growerlabs-tiempo
+
+services:
+  db:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tiempo
+      POSTGRES_USER: tiempo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - tiempo_postgres_data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tiempo -d tiempo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://tiempo:${POSTGRES_PASSWORD}@db:5432/tiempo
+      SERIES_MAX_POINTS: 5000
+    networks: [backend]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    image: nginx:1.31.8-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PUBLIC_PORT:-8002}:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [backend, frontend]
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  collector:
+    build: .
+    command: ["python", "-m", "weather.collector"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://tiempo:${POSTGRES_PASSWORD}@db:5432/tiempo
+      COLLECT_INTERVAL_SECONDS: ${COLLECT_INTERVAL_SECONDS:-300}
+      REQUEST_TIMEOUT_SECONDS: 30
+      SOURCE_TIMEZONE: America/Montevideo
+    # Único servicio con salida a Internet: consulta el endpoint público de INUMET.
+    networks: [backend, collector_egress]
+    depends_on:
+      db: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+  collector_egress: {}
+
+volumes:
+  tiempo_postgres_data:
